@@ -4,7 +4,8 @@ package iit.pkd.researchrequirements.model.requirement
 
 import iit.pkd.researchrequirements.model.auxmodel.Remark
 import iit.pkd.researchrequirements.model.auxmodel.ResearchVacancy
-import iit.pkd.researchrequirements.model.auxmodel.Vacancy
+import iit.pkd.researchrequirements.model.auxmodel.SeatMatrix
+//import iit.pkd.researchrequirements.model.auxmodel.Vacancy
 import iit.pkd.researchrequirements.model.common.UIDate
 import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 import iit.pkd.researchrequirements.model.session.SessionID
@@ -17,8 +18,8 @@ data class ResearchRequirement(
     @Id val id: ResearchRequirementID,
     @Indexed val sessionID: SessionID,
     @Indexed val deptShortCode: String,
-    val vacancyList: MutableList<ResearchVacancy> = mutableListOf(),
-    val approvedVacancyList: MutableList<Vacancy> = mutableListOf(),
+    val requestedVacancy: MutableList<ResearchVacancy> = mutableListOf(),
+    val approvedVacancy: MutableList<SeatMatrix> = mutableListOf(),
     val remarks: MutableList<Remark> = mutableListOf(),
     val isArchived: Boolean = false,
     val submittedOn: UIDate,

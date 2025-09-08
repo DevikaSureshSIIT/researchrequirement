@@ -4,6 +4,7 @@ package iit.pkd.researchrequirements.repo
 import iit.pkd.researchrequirements.model.requirement.ResearchRequirement
 import iit.pkd.researchrequirements.model.session.ResearchRecruitmentSession
 import iit.pkd.researchrequirements.model.session.SessionID
+import iit.pkd.researchrequirements.model.session.SessionStatus
 import iit.pkd.researchrequirements.model.user.ERPUserView
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.stereotype.Repository
@@ -15,7 +16,7 @@ interface ResearchRequirementRepository : MongoRepository<ResearchRequirement, S
 
 @Repository
 interface ResearchRecruitmentSessionRepository : MongoRepository<ResearchRecruitmentSession, String> {
-    fun findByIsOpenTrue(): ResearchRecruitmentSession?
+    fun findBySessionStatus(status: SessionStatus): ResearchRecruitmentSession?
 }
 
 @Repository

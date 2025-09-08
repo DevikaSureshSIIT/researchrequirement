@@ -12,19 +12,20 @@ import iit.pkd.researchrequirements.service.ResearchRequirementService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
+
+
 @RestController
 @RequestMapping("/api/MENUPATH")
 class ResearchRequirementController(
     private val service: ResearchRequirementService
 ) {
-    // Controller
     @PostMapping("/researchrequirements")
     fun getResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement> =
-        service.fetchResearchRequirements(deptShortCode.trim())
+        service.fetchResearchRequirements(DeptRequest(deptShortCode.trim()))
 
-    @PostMapping("/faculties")
-    fun getFaculties(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> =
-        service.fetchFaculties(deptShortCode.trim())
+    @PostMapping("/faculty")
+    fun getFaculty(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> =
+        service.fetchFaculties(DeptRequest(deptShortCode.trim()))
 
 
     // 3) POST api/MENUPATH/researchrequirement (Upsert)

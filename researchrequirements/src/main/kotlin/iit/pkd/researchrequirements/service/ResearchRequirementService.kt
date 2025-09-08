@@ -10,6 +10,7 @@ import iit.pkd.researchrequirements.model.common.UIDate
 import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 import iit.pkd.researchrequirements.model.requirement.ResearchRequirement
 import iit.pkd.researchrequirements.model.session.ResearchRecruitmentSession
+import iit.pkd.researchrequirements.model.session.SessionStatus
 import iit.pkd.researchrequirements.model.user.ERPMinView
 import iit.pkd.researchrequirements.model.user.ERPUserView
 import iit.pkd.researchrequirements.model.user.UserType
@@ -25,64 +26,75 @@ class ResearchRequirementService(
     private val sessionRepo: ResearchRecruitmentSessionRepository,
     private val userRepo: ERPUserViewRepository
 ) {
-    // 1) Fetch status of research vacancies (by dept) — only when session open
-    fun fetchResearchRequirements(deptShortCode: String): RestResponseEntity<ResearchRequirement> {
-        val session = sessionRepo.findByIsOpenTrue()
+    // 1) Fetch status of research vacancies
+    fun fetchResearchRequirements(req: DeptRequest): RestResponseEntity<ResearchRequirement> {
+        val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
             ?: return RestResponse.error("No active research recruitment session.", HttpStatus.FORBIDDEN)
 
-        val rr = rrRepo.findBySessionIDAndDeptShortCode(session.id, deptShortCode)
-            ?: return RestResponse.error("No research requirements found for department $deptShortCode in current session.", HttpStatus.NOT_FOUND)
+        val rr = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, req.deptShortCode)
+            ?: return RestResponse.error("No research requirements found for department ${req.deptShortCode}.", HttpStatus.NOT_FOUND)
 
         return RestResponse.withData(rr)
     }
 
-    fun fetchFaculties(deptShortCode: String): RestResponseEntity<List<ERPMinView>> {
+    // 2) Fetch faculties
+    fun fetchFaculties(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
         val faculties = userRepo.findByUserType(UserType.FACULTY)
-        val filtered = if (deptShortCode == "*") {
+        val filtered = if (req.deptShortCode == "*") {
             faculties
         } else {
-            faculties.filter { it.deptShortCodes.contains(deptShortCode) }
+            faculties.filter { it.deptShortCodes.contains(req.deptShortCode) }
         }
         val minViews = filtered.map { it.toMinView() }
         return RestResponse.withData(minViews)
     }
 
-    // 3) Upsert research requirement — with constraints from the doc
+    // 3) Upsert research requirement with new session rules
     fun upsertResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
-        val session: ResearchRecruitmentSession = sessionRepo.findByIsOpenTrue()
-            ?: return OpResponse.failure("Active session is closed. Modification is not allowed.")
+        val session: ResearchRecruitmentSession? = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
+        if (session == null) {
+            return OpResponse.failure("Active session is not available.")
+        }
 
-        // Existing record for dept+session?
-        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.id, body.deptShortCode)
+        when (session.sessionStatus) {
+            SessionStatus.CLOSED -> {
+                return OpResponse.failure("Session is CLOSED. Modification not allowed. Archiving data.")
+            }
 
-        // If a seat matrix (approvedVacancyList) exists, enforce constraint: requested total <= approved total.
-        if (existing != null && existing.approvedVacancyList.isNotEmpty()) {
-            val requested = body.vacancyList.sumOf { it.numOfPost.toLong() }
-            val approved = existing.approvedVacancyList.sumOf { it.numPosts.toLong() }
-            if (requested > approved) {
-                return OpResponse.failure("Requested posts ($requested) exceed approved vacancies ($approved).")
+            SessionStatus.APPROVED -> {
+                val existing = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, body.deptShortCode)
+                if (existing != null && existing.approvedVacancy.isNotEmpty()) {
+                    val requested = body.requestedVacancy.sumOf { it.noOfVacancy.toLong() }
+                    val approved = existing.approvedVacancy.sumOf { it.vacancy.toLong() }
+                    if (requested > approved) {
+                        return OpResponse.failure("Requested posts ($requested) exceed approved vacancies ($approved).")
+                    }
+                }
+            }
+
+            SessionStatus.OPEN -> {
+                // normal insert flow allowed
             }
         }
 
         val now = UIDate.getCurrentDate()
 
+        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, body.deptShortCode)
         val toSave = if (existing == null) {
             ResearchRequirement(
                 id = ResearchRequirementID.create(),
-                sessionID = session.id,
+                sessionID = session.sessionID,
                 deptShortCode = body.deptShortCode,
-                vacancyList = body.vacancyList.toMutableList(),
-                approvedVacancyList = mutableListOf(), // immutable via service rule
+                requestedVacancy = body.requestedVacancy.toMutableList(),
+                approvedVacancy = mutableListOf(),
                 remarks = body.remarks.toMutableList(),
                 isArchived = body.isArchived,
                 submittedOn = body.submittedOn ?: now,
                 latestUpdatedOn = now
             )
         } else {
-            // keep approvedVacancyList immutable; update others
             existing.copy(
-                vacancyList = body.vacancyList.toMutableList(),
-                // approvedVacancyList stays from existing
+                requestedVacancy = body.requestedVacancy.toMutableList(),
                 remarks = body.remarks.toMutableList(),
                 isArchived = body.isArchived,
                 latestUpdatedOn = now
@@ -94,7 +106,7 @@ class ResearchRequirementService(
         return OpResponse.success(message = msg, data = saved)
     }
 
-    // Helper mapping without extra mappers/config (inline per your constraint)
+    // Inline mapper
     private fun ERPUserView.toMinView(): ERPMinView =
         ERPMinView(
             id = this.id,

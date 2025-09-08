@@ -5,10 +5,10 @@ import iit.pkd.researchrequirements.model.common.UIDate
 import iit.pkd.researchrequirements.model.id.UserID
 
 data class ResearchVacancy(
-    val nameOfPost: String,
-    val researchAreas: List<String>,
-    val numOfPost: UInt,
-    val faculty: UserID
+    val subArea: String,
+    val researchArea: String,
+    val possibleGuides: List<UserID>, // list of faculty IDs
+    val noOfVacancy: UInt
 )
 
 data class Remark(
@@ -17,12 +17,12 @@ data class Remark(
     val date: UIDate,
 )
 
-data class Vacancy(
+// Replaces Vacancy → now SeatMatrix
+data class SeatMatrix(
     val categoryID: CategoryID,
     val categoryName: String,
-    val numPosts: UInt
+    val vacancy: UInt
 )
 
-// Simple ID for Category (the doc references CategoryID but doesn't define it;
-// keep it minimal without extra classes/config).
+// Simple ID for Category
 data class CategoryID(val id: String)
