@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ResearchRequirementRepository : MongoRepository<ResearchRequirement, String> {
     fun findBySessionIDAndDeptShortCode(sessionID: SessionID, deptShortCode: String): ResearchRequirement?
+    fun findAllByDeptShortCodeAndIsArchivedTrue(deptShortCode: String): List<ResearchRequirement>
+
 }
 
 @Repository
@@ -23,3 +25,4 @@ interface ResearchRecruitmentSessionRepository : MongoRepository<ResearchRecruit
 interface ERPUserViewRepository : MongoRepository<ERPUserView, String> {
     fun findByUserType(userType: iit.pkd.researchrequirements.model.user.UserType): List<ERPUserView>
 }
+

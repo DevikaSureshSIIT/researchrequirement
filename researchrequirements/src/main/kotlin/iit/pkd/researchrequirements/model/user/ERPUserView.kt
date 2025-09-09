@@ -13,8 +13,16 @@ import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
 
 enum class UserType {
-    STUDENT, SCHOLAR, FACULTY, STAFF, SYSTEMCREATED, EXTERNAL
+    STUDENT,
+    SCHOLAR,
+    FACULTY,
+    STAFF,
+    SYSTEMCREATED,
+    EXTERNAL,
+    DRC,      // Added: Department Research Committee chair
+    ADMIN     // Added: Academic/Admin team
 }
+
 
 @Document("erpUsers")
 data class ERPUserView(
