@@ -14,13 +14,13 @@ import org.springframework.data.mongodb.core.mapping.Document
 
 enum class UserType {
     STUDENT,
-    SCHOLAR,
+    RESEARCHSCHOLAR,
+
     FACULTY,
     STAFF,
     SYSTEMCREATED,
-    EXTERNAL,
-    DRC,      // Added: Department Research Committee chair
-    ADMIN     // Added: Academic/Admin team
+    EXTERNAL
+
 }
 
 
@@ -33,7 +33,7 @@ data class ERPUserView(
     @NotBlank @Size(max = 100) @Email @Indexed val email: String,
     val deptShortCodes: MutableSet<String> = mutableSetOf(),
     @Indexed val userType: UserType,
-    @Indexed val erpID: UserID
+    @Indexed val erpID: ERPID
 )
 
 // Response-min view requested in the doc (a.k.a. ERPMinView / ERPUserMinView)
@@ -41,5 +41,8 @@ data class ERPMinView(
     val id: UserID,
     val name: String, // firstname + lastname
     val email: String,
-    val deptShortCodes: List<String>
+    val deptShortCodes: List<String>,
+    val erpID: ERPID
+
+
 )

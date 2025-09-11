@@ -10,13 +10,13 @@ import org.springframework.data.mongodb.core.mapping.Document
 
 typealias SessionID = String
 
-enum class SessionStatus { OPEN, APPROVED, CLOSED }
+enum class SessionStatus { OPEN,  CLOSED }
 
 @Document("researchRecruitmentSessions")
 data class ResearchRecruitmentSession(
-    @Id val sessionID: SessionID,
-    @Indexed(unique = true) val sessionName: String,
-    val sessionStatus: SessionStatus,
+    @Id val id: SessionID,
+    @Indexed(unique = true) val name: String,
+    val status: SessionStatus,
     val description: String,
     val endDate: UIDate
 )

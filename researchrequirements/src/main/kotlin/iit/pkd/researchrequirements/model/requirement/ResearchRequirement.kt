@@ -18,7 +18,7 @@ data class ResearchRequirement(
     @Id val id: ResearchRequirementID,
     @Indexed val sessionID: SessionID,
     @Indexed val deptShortCode: String,
-    val requestedVacancy: MutableList<ResearchVacancy> = mutableListOf(),
+    val researchVacancy: MutableList<ResearchVacancy> = mutableListOf(),
     val approvedVacancy: MutableList<SeatMatrix> = mutableListOf(),
     val remarks: MutableList<Remark> = mutableListOf(),
     val isArchived: Boolean = false,

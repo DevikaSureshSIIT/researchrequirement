@@ -31,7 +31,7 @@ class ResearchRequirementService(
         val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
             ?: return RestResponse.error("No active research recruitment session.", HttpStatus.FORBIDDEN)
 
-        val rr = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, req.deptShortCode)
+        val rr = rrRepo.findBySessionIDAndDeptShortCode(session.id, req.deptShortCode)
             ?: return RestResponse.error("No research requirements found for department ${req.deptShortCode}.", HttpStatus.NOT_FOUND)
 
         return RestResponse.withData(rr)
@@ -47,7 +47,7 @@ class ResearchRequirementService(
     }
 
 
-    // 2) Fetch faculties
+    // 3) Fetch faculties
     fun fetchFaculties(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
         val faculties = userRepo.findByUserType(UserType.FACULTY)
         val filtered = if (req.deptShortCode == "*") {
@@ -59,89 +59,58 @@ class ResearchRequirementService(
         return RestResponse.withData(minViews)
     }
 
-    // 3) Upsert research requirement with new session rules
+    // 4) Upsert research requirement with new session rules
     fun upsertResearchRequirement(
         body: ResearchRequirementREq,
         currentUser: ERPUserView
     ): OpResponse<ResearchRequirement> {
 
-        // 1️⃣ Fetch session (current active session)
+        // 1️⃣ Fetch session (only OPEN allowed)
         val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
             ?: return OpResponse.failure("Active session is not available.")
 
-        // 2️⃣ Role-based access control
-        when (currentUser.userType) {
-            UserType.FACULTY -> {
-                // Faculty can only update during OPEN session
-                if (session.sessionStatus != SessionStatus.OPEN) {
-                    return OpResponse.failure("Faculty can only submit during OPEN session.")
-                }
-            }
+        // 2️⃣ Only Faculty can submit/update
+        if (currentUser.userType != UserType.FACULTY) {
+            return OpResponse.failure("Only Faculty are allowed to submit or update research requirements.")
+        }
 
-            UserType.DRC -> {
-                // DRC can submit requestedVacancy/remarks in OPEN or APPROVED
-                if (session.sessionStatus == SessionStatus.CLOSED) {
-                    return OpResponse.failure("DRC cannot modify a CLOSED session.")
-                }
-            }
+        // 3️⃣ Ensure session is OPEN
+        if (session.status != SessionStatus.OPEN) {
+            return OpResponse.failure("Research requirements can only be modified during an OPEN session.")
+        }
 
-            UserType.ADMIN -> {
-                // Admin can do anything
-            }
+        // 4️⃣ Fetch existing requirement for this dept & session
+        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.id, body.deptShortCode)
 
-            else -> {
-                return OpResponse.failure("Unauthorized role: ${currentUser.userType}")
+        // 5️⃣ Vacancy validation
+        if (existing != null && existing.approvedVacancy.isNotEmpty()) {
+            val requested = body.requestedVacancy.sumOf { it.vacancy.toLong() }
+            val approved = existing.approvedVacancy.sumOf { it.vacancy.toLong() }
+            if (requested > approved) {
+                return OpResponse.failure(
+                    "Requested posts ($requested) exceed approved vacancies ($approved)."
+                )
             }
         }
 
-        // 3️⃣ Session status checks (existing logic)
-        when (session.sessionStatus) {
-            SessionStatus.CLOSED -> {
-                return OpResponse.failure("Session is CLOSED. Modification not allowed.")
-            }
-
-            SessionStatus.APPROVED -> {
-                val existing = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, body.deptShortCode)
-                if (existing != null && existing.approvedVacancy.isNotEmpty()) {
-                    val requested = body.requestedVacancy.sumOf { it.noOfVacancy.toLong() }
-                    val approved = existing.approvedVacancy.sumOf { it.vacancy.toLong() }
-                    if (requested > approved) {
-                        return OpResponse.failure(
-                            "Requested posts ($requested) exceed approved vacancies ($approved)."
-                        )
-                    }
-                }
-            }
-
-            SessionStatus.OPEN -> {
-                // insert/update allowed
-            }
-        }
-
-        // 4️⃣ Temporary guide handling
+        // 6️⃣ Temporary guide handling (if no guide, assign DRC/faculty responsible for dept)
         val updatedVacancy = body.requestedVacancy.map { vacancy ->
             if (vacancy.possibleGuides.isEmpty()) {
-                val drc = userRepo.findByUserType(UserType.DRC)
+                val faculty = userRepo.findByUserType(UserType.FACULTY)
                     .firstOrNull { it.deptShortCodes.contains(body.deptShortCode) }
-                if (drc != null) vacancy.copy(possibleGuides = listOf(drc.id)) else vacancy
+                if (faculty != null) vacancy.copy(possibleGuides = mutableListOf((faculty.id)) else vacancy
             } else vacancy
         }.toMutableList()
 
-        // 5️⃣ Prevent non-admin from modifying approvedVacancy
-        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.sessionID, body.deptShortCode)
-        if (existing != null && body.approvedVacancy != existing.approvedVacancy && currentUser.userType != UserType.ADMIN) {
-            return OpResponse.failure("Only Admin / Acad team can edit approved seat matrix.")
-        }
-
-        // 6️⃣ Prepare object to save
+        // 7️⃣ Build object to save (approvedVacancy is immutable here)
         val now = UIDate.getCurrentDate()
         val toSave = if (existing == null) {
             ResearchRequirement(
                 id = ResearchRequirementID.create(),
-                sessionID = session.sessionID,
+                sessionID = session.id,
                 deptShortCode = body.deptShortCode,
-                requestedVacancy = updatedVacancy,
-                approvedVacancy = body.approvedVacancy.toMutableList(),
+                researchVacancy = updatedVacancy,
+                approvedVacancy = body.approvedVacancy.toMutableList(), // Only used for NEW entry
                 remarks = body.remarks.toMutableList(),
                 isArchived = body.isArchived,
                 submittedOn = body.submittedOn ?: now,
@@ -149,20 +118,20 @@ class ResearchRequirementService(
             )
         } else {
             existing.copy(
-                requestedVacancy = updatedVacancy,
-                approvedVacancy = if (currentUser.userType == UserType.ADMIN) body.approvedVacancy.toMutableList() else existing.approvedVacancy,
+                researchVacancy = updatedVacancy,
+                approvedVacancy = existing.approvedVacancy, // immutable
                 remarks = body.remarks.toMutableList(),
                 isArchived = body.isArchived,
                 latestUpdatedOn = now
             )
         }
 
-        // 7️⃣ Save and return
+        // 8️⃣ Save and return
         val saved = rrRepo.save(toSave)
-        val msg = if (existing == null) "Research vacancies submitted successfully" else "Research vacancies updated successfully"
+        val msg = if (existing == null) "Research vacancies submitted successfully"
+        else "Research vacancies updated successfully"
         return OpResponse.success(message = msg, data = saved)
     }
-
 
     // Inline mapper
     private fun ERPUserView.toMinView(): ERPMinView =
@@ -170,6 +139,7 @@ class ResearchRequirementService(
             id = this.id,
             name = "${this.firstname} ${this.lastname}",
             email = this.email,
-            deptShortCodes = this.deptShortCodes.toList()
+            deptShortCodes = this.deptShortCodes.toList(),
+            erpID = this.erpID
         )
 }

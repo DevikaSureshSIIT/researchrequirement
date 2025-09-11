@@ -6,9 +6,10 @@ import iit.pkd.researchrequirements.model.id.UserID
 
 data class ResearchVacancy(
     val subArea: String,
-    val researchArea: String,
-    val possibleGuides: List<UserID>, // list of faculty IDs
-    val noOfVacancy: UInt
+    val researchAreas: MutableList<String> =mutableListOf(),
+    val vacancy: UInt,
+    val possibleGuides: MutableList<UserID> = mutableListOf()
+
 )
 
 data class Remark(
@@ -20,7 +21,7 @@ data class Remark(
 // Replaces Vacancy → now SeatMatrix
 data class SeatMatrix(
     val categoryID: CategoryID,
-    val categoryName: String,
+
     val vacancy: UInt
 )
 
