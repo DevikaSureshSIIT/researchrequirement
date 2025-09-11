@@ -28,7 +28,7 @@ class ResearchRequirementService(
 ) {
     // 1) Fetch research requirements for OPEN session
     fun fetchCurrentResearchRequirements(req: DeptRequest): RestResponseEntity<ResearchRequirement> {
-        val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
+        val session = sessionRepo.findByStatus(SessionStatus.OPEN)
             ?: return RestResponse.error("No active research recruitment session.", HttpStatus.FORBIDDEN)
 
         val rr = rrRepo.findBySessionIDAndDeptShortCode(session.id, req.deptShortCode)
@@ -47,13 +47,13 @@ class ResearchRequirementService(
     }
 
 
-    // 3) Fetch faculties
-    fun fetchFaculties(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
-        val faculties = userRepo.findByUserType(UserType.FACULTY)
+    // 3) Fetch faculty
+    fun fetchFaculty(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
+        val faculty = userRepo.findByUserType(UserType.FACULTY)
         val filtered = if (req.deptShortCode == "*") {
-            faculties
+            faculty
         } else {
-            faculties.filter { it.deptShortCodes.contains(req.deptShortCode) }
+            faculty.filter { it.deptShortCodes.contains(req.deptShortCode) }
         }
         val minViews = filtered.map { it.toMinView() }
         return RestResponse.withData(minViews)
@@ -66,7 +66,7 @@ class ResearchRequirementService(
     ): OpResponse<ResearchRequirement> {
 
         // 1️⃣ Fetch session (only OPEN allowed)
-        val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
+        val session = sessionRepo.findByStatus(SessionStatus.OPEN)
             ?: return OpResponse.failure("Active session is not available.")
 
         // 2️⃣ Only Faculty can submit/update
@@ -84,7 +84,7 @@ class ResearchRequirementService(
 
         // 5️⃣ Vacancy validation
         if (existing != null && existing.approvedVacancy.isNotEmpty()) {
-            val requested = body.requestedVacancy.sumOf { it.vacancy.toLong() }
+            val requested = body.researchVacancy.sumOf { it.vacancy.toLong() }
             val approved = existing.approvedVacancy.sumOf { it.vacancy.toLong() }
             if (requested > approved) {
                 return OpResponse.failure(
@@ -94,12 +94,18 @@ class ResearchRequirementService(
         }
 
         // 6️⃣ Temporary guide handling (if no guide, assign DRC/faculty responsible for dept)
-        val updatedVacancy = body.requestedVacancy.map { vacancy ->
+        val updatedVacancy = body.researchVacancy.map { vacancy ->
             if (vacancy.possibleGuides.isEmpty()) {
                 val faculty = userRepo.findByUserType(UserType.FACULTY)
                     .firstOrNull { it.deptShortCodes.contains(body.deptShortCode) }
-                if (faculty != null) vacancy.copy(possibleGuides = mutableListOf((faculty.id)) else vacancy
-            } else vacancy
+                if (faculty != null) {
+                    vacancy.copy(possibleGuides = mutableListOf(faculty.id))
+                } else {
+                    vacancy
+                }
+            } else {
+                vacancy
+            }
         }.toMutableList()
 
         // 7️⃣ Build object to save (approvedVacancy is immutable here)

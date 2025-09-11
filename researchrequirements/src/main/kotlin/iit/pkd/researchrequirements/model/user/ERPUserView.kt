@@ -33,7 +33,7 @@ data class ERPUserView(
     @NotBlank @Size(max = 100) @Email @Indexed val email: String,
     val deptShortCodes: MutableSet<String> = mutableSetOf(),
     @Indexed val userType: UserType,
-    @Indexed val erpID: ERPID
+    @Indexed val erpID: UserID
 )
 
 // Response-min view requested in the doc (a.k.a. ERPMinView / ERPUserMinView)

@@ -45,7 +45,7 @@ class ResearchRequirementController(
     //3) Fetch faculty
     @PostMapping("/faculty")
     fun getFaculty(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> =
-        service.fetchFaculties(DeptRequest(deptShortCode.trim()))
+        service.fetchFaculty(DeptRequest(deptShortCode.trim()))
 
 
     // 4) POST api/MENUPATH/researchrequirement (Upsert)
