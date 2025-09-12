@@ -18,7 +18,7 @@ interface ResearchRequirementRepository : MongoRepository<ResearchRequirement, S
 
 @Repository
 interface ResearchRecruitmentSessionRepository : MongoRepository<ResearchRecruitmentSession, String> {
-    fun findBySessionStatus(status: SessionStatus): ResearchRecruitmentSession?
+    fun findByStatus(status: SessionStatus): ResearchRecruitmentSession?
 }
 
 @Repository

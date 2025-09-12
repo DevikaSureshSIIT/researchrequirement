@@ -20,6 +20,7 @@ import iit.pkd.researchrequirements.repo.ResearchRequirementRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
+
 @Service
 class ResearchRequirementService(
     private val rrRepo: ResearchRequirementRepository,
@@ -28,11 +29,11 @@ class ResearchRequirementService(
 ) {
     // 1) Fetch research requirements for OPEN session
     fun fetchCurrentResearchRequirements(req: DeptRequest): RestResponseEntity<ResearchRequirement> {
-        val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
+        val session = sessionRepo.findByStatus(SessionStatus.OPEN)
             ?: return RestResponse.error("No active research recruitment session.", HttpStatus.FORBIDDEN)
 
         val rr = rrRepo.findBySessionIDAndDeptShortCode(session.id, req.deptShortCode)
-            ?: return RestResponse.error("No research requirements found for department ${req.deptShortCode}.", HttpStatus.NOT_FOUND)
+            ?: return RestResponse.error("No research requirements found for department ${req.deptShortCode}.")
 
         return RestResponse.withData(rr)
     }
@@ -47,13 +48,13 @@ class ResearchRequirementService(
     }
 
 
-    // 3) Fetch faculties
-    fun fetchFaculties(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
-        val faculties = userRepo.findByUserType(UserType.FACULTY)
+    // 3) Fetch faculty
+    fun fetchFaculty(req: DeptRequest): RestResponseEntity<List<ERPMinView>> {
+        val faculty = userRepo.findByUserType(UserType.FACULTY)
         val filtered = if (req.deptShortCode == "*") {
-            faculties
+            faculty
         } else {
-            faculties.filter { it.deptShortCodes.contains(req.deptShortCode) }
+            faculty.filter { it.deptShortCodes.contains(req.deptShortCode) }
         }
         val minViews = filtered.map { it.toMinView() }
         return RestResponse.withData(minViews)
@@ -62,71 +63,58 @@ class ResearchRequirementService(
     // 4) Upsert research requirement with new session rules
     fun upsertResearchRequirement(
         body: ResearchRequirementREq,
-        currentUser: ERPUserView
+        currentUser: ERPUserView? = null
     ): OpResponse<ResearchRequirement> {
 
-        // 1️⃣ Fetch session (only OPEN allowed)
-        val session = sessionRepo.findBySessionStatus(SessionStatus.OPEN)
-            ?: return OpResponse.failure("Active session is not available.")
 
-        // 2️⃣ Only Faculty can submit/update
-        if (currentUser.userType != UserType.FACULTY) {
-            return OpResponse.failure("Only Faculty are allowed to submit or update research requirements.")
-        }
 
-        // 3️⃣ Ensure session is OPEN
-        if (session.status != SessionStatus.OPEN) {
-            return OpResponse.failure("Research requirements can only be modified during an OPEN session.")
-        }
+        // 1️⃣ Only OPEN session allowed
+        val openSessions = sessionRepo.findAll()
+            .filter { it.status == SessionStatus.OPEN }
 
-        // 4️⃣ Fetch existing requirement for this dept & session
-        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.id, body.deptShortCode)
+        val session = openSessions.maxByOrNull { it.endDate }
+            ?: return OpResponse.failure("No active session. Submission/update allowed only in OPEN session.")
 
-        // 5️⃣ Vacancy validation
-        if (existing != null && existing.approvedVacancy.isNotEmpty()) {
-            val requested = body.requestedVacancy.sumOf { it.vacancy.toLong() }
-            val approved = existing.approvedVacancy.sumOf { it.vacancy.toLong() }
-            if (requested > approved) {
-                return OpResponse.failure(
-                    "Requested posts ($requested) exceed approved vacancies ($approved)."
-                )
+        // 2️⃣ Validate possibleGuides: must exist as FACULTY in DB
+        val facultyIds = userRepo.findByUserType(UserType.FACULTY).map { it.id }
+        val updatedVacancy = body.researchVacancy.map { vacancy ->
+            val validGuides = vacancy.possibleGuides.filter { it in facultyIds }
+            if (validGuides.size != vacancy.possibleGuides.size) {
+                return OpResponse.failure("One or more possible guides are invalid or not faculty")
             }
-        }
-
-        // 6️⃣ Temporary guide handling (if no guide, assign DRC/faculty responsible for dept)
-        val updatedVacancy = body.requestedVacancy.map { vacancy ->
-            if (vacancy.possibleGuides.isEmpty()) {
-                val faculty = userRepo.findByUserType(UserType.FACULTY)
-                    .firstOrNull { it.deptShortCodes.contains(body.deptShortCode) }
-                if (faculty != null) vacancy.copy(possibleGuides = mutableListOf((faculty.id)) else vacancy
-            } else vacancy
+            vacancy.copy(possibleGuides = validGuides.toMutableList())
         }.toMutableList()
 
-        // 7️⃣ Build object to save (approvedVacancy is immutable here)
+        // 3️⃣ Fetch existing requirement for this dept & session
+        val existing = rrRepo.findBySessionIDAndDeptShortCode(session.id, body.deptShortCode)
+
+        // 4️⃣ Preserve approvedVacancy and deptShortCode; request cannot modify them
         val now = UIDate.getCurrentDate()
         val toSave = if (existing == null) {
+            // New record → deptShortCode from request
             ResearchRequirement(
                 id = ResearchRequirementID.create(),
                 sessionID = session.id,
                 deptShortCode = body.deptShortCode,
                 researchVacancy = updatedVacancy,
-                approvedVacancy = body.approvedVacancy.toMutableList(), // Only used for NEW entry
+                approvedVacancy = mutableListOf(), // New record, empty
                 remarks = body.remarks.toMutableList(),
-                isArchived = body.isArchived,
+                isArchived = false,
                 submittedOn = body.submittedOn ?: now,
                 latestUpdatedOn = now
             )
         } else {
+            // Existing record → preserve deptShortCode & sessionID
             existing.copy(
                 researchVacancy = updatedVacancy,
-                approvedVacancy = existing.approvedVacancy, // immutable
+                approvedVacancy = existing.approvedVacancy, // strictly preserve
                 remarks = body.remarks.toMutableList(),
-                isArchived = body.isArchived,
+                isArchived = false, // always false
                 latestUpdatedOn = now
             )
         }
 
-        // 8️⃣ Save and return
+        // 5️⃣ Save and return
         val saved = rrRepo.save(toSave)
         val msg = if (existing == null) "Research vacancies submitted successfully"
         else "Research vacancies updated successfully"
@@ -140,6 +128,7 @@ class ResearchRequirementService(
             name = "${this.firstname} ${this.lastname}",
             email = this.email,
             deptShortCodes = this.deptShortCodes.toList(),
-            erpID = this.erpID
+            erpID = this.erpID,
+
         )
 }

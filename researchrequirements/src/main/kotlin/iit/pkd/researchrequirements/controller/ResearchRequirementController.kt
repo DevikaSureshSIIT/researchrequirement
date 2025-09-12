@@ -30,39 +30,33 @@ class ResearchRequirementController(
 
         // 1️⃣ Fetch research requirements for the OPEN session
         @PostMapping
-        fun getCurrentResearchRequirements(@RequestBody req: DeptRequest): RestResponseEntity<ResearchRequirement> {
+        fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement> {
+            val req = DeptRequest(deptShortCode.trim())
             return service.fetchCurrentResearchRequirements(req)
         }
 
-        // 2️⃣ Fetch historical research requirements for CLOSED sessions
         @PostMapping("/history")
-        fun getHistoricalResearchRequirements(@RequestBody req: DeptRequest): RestResponseEntity<List<ResearchRequirement>> {
+        fun getHistoricalResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<List<ResearchRequirement>> {
+            val req = DeptRequest(deptShortCode.trim())
             return service.fetchHistoricalResearchRequirements(req)
         }
+
     }
 
 
     //3) Fetch faculty
     @PostMapping("/faculty")
     fun getFaculty(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> =
-        service.fetchFaculties(DeptRequest(deptShortCode.trim()))
+        service.fetchFaculty(DeptRequest(deptShortCode.trim()))
 
 
     // 4) POST api/MENUPATH/researchrequirement (Upsert)
-    @PostMapping("/researchrequirement")
-    fun upsert(
-        @RequestBody body: ResearchRequirementREq,
-        @RequestHeader("userId") userId: String   // or from authentication context
-    ): ResponseEntity<OpResponse<ResearchRequirement>> {
 
-        // fetch current user from repo
-        val currentUser = userRepo.findAll()
-            .firstOrNull { it.id.uuid == userId }
-            ?: throw RuntimeException("User not found")
+        @PostMapping("/researchrequirement")
+        fun upsert(@RequestBody body: ResearchRequirementREq): ResponseEntity<OpResponse<ResearchRequirement>> {
 
-
-        val op = service.upsertResearchRequirement(body, currentUser)
+        // Call service; no user required
+        val op = service.upsertResearchRequirement(body, null)
         return ResponseEntity.ok(op)
-    }
 
-}
+}}
