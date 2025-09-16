@@ -21,7 +21,6 @@ data class Remark(
 // Replaces Vacancy → now SeatMatrix
 data class SeatMatrix(
     val categoryID: CategoryID,
-
     val vacancy: UInt
 )
 

@@ -1,12 +1,9 @@
 package iit.pkd.researchrequirements.model.requirement
 
-
-
+import iit.pkd.researchrequirements.model.auxmodel.Decision
 import iit.pkd.researchrequirements.model.auxmodel.Remark
-import iit.pkd.researchrequirements.model.auxmodel.ResearchVacancy
 import iit.pkd.researchrequirements.model.auxmodel.SeatMatrix
-//import iit.pkd.researchrequirements.model.auxmodel.Vacancy
-import iit.pkd.researchrequirements.model.common.UIDate
+import iit.pkd.researchrequirements.model.auxmodel.SubAreaVacancy
 import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 import iit.pkd.researchrequirements.model.session.SessionID
 import org.springframework.data.annotation.Id
@@ -18,10 +15,12 @@ data class ResearchRequirement(
     @Id val id: ResearchRequirementID,
     @Indexed val sessionID: SessionID,
     @Indexed val deptShortCode: String,
-    val researchVacancy: MutableList<ResearchVacancy> = mutableListOf(),
+    val researchVacancy: MutableList<SubAreaVacancy> = mutableListOf(),
     val approvedVacancy: MutableList<SeatMatrix> = mutableListOf(),
+    val vacancyStatus: VacancyStatus,
+    val requirementStatus: RequirementStatus,
     val remarks: MutableList<Remark> = mutableListOf(),
-    val isArchived: Boolean = false,
-    val submittedOn: UIDate,
-    val latestUpdatedOn: UIDate
+    val decisions: MutableList<Decision> = mutableListOf(),
+    val version: String,
+    val isArchived: Boolean = false
 )

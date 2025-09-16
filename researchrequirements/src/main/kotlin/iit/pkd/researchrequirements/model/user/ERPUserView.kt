@@ -42,7 +42,9 @@ data class ERPMinView(
     val name: String, // firstname + lastname
     val email: String,
     val deptShortCodes: List<String>,
-    val erpID: ERPID
+    val erpID: ERPID,
+
+
 
 
 )

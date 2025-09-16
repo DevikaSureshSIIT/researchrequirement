@@ -1,22 +1,25 @@
 package iit.pkd.researchrequirements.dto
 
 import iit.pkd.researchrequirements.model.auxmodel.Remark
-import iit.pkd.researchrequirements.model.auxmodel.ResearchVacancy
-import iit.pkd.researchrequirements.model.auxmodel.SeatMatrix
-import iit.pkd.researchrequirements.model.common.UIDate
+import iit.pkd.researchrequirements.model.auxmodel.SubAreaVacancy
 
 
-// For POST /researchrequirements and /faculties
+
 data class DeptRequest(
     val deptShortCode: String
 )
 
-// Upsert payload (explicitly named per your request: ResearchRequirementREq)
+
+/**
+ * Request payload for save / submit endpoints.
+ *
+ * Note:
+ * - The server will set vacancyStatus / requirementStatus according to the endpoint (save or submit).
+ * - "version" is optional in request; if provided it will be persisted/copied into the stored document.
+ */
 data class ResearchRequirementREq(
     val deptShortCode: String,
-    val researchVacancy: List<ResearchVacancy> = emptyList(),
-    val remarks: List<Remark> = emptyList(),
-    val isArchived: Boolean = false,
-    val submittedOn: UIDate? = null, // if null, service will set UIDate.getCurrentDate()
-    val approvedVacancy: List<SeatMatrix> = emptyList(),   // add this
+    val researchVacancy: MutableList<SubAreaVacancy> = mutableListOf(),
+    val remarks: MutableList<Remark> = mutableListOf(),
+    val version: String? = null
 )
