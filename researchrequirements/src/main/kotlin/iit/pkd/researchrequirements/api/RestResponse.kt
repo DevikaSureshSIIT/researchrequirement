@@ -1,6 +1,5 @@
 package iit.pkd.researchrequirements.api
 
-
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 
@@ -9,7 +8,6 @@ typealias RestResponseEntity<T> = ResponseEntity<RestResponse<T>>
 sealed class RestResponse<T : Any> {
     abstract val message: String
 
-    //@ConsistentCopyVisibility
     data class Success<T : Any> internal constructor(
         override val message: String,
         val data: T? = null
@@ -18,7 +16,6 @@ sealed class RestResponse<T : Any> {
             ResponseEntity.ok().body(this)
     }
 
-    //@ConsistentCopyVisibility
     data class Error<T : Any> internal constructor(
         override val message: String
     ) : RestResponse<T>() {
@@ -41,19 +38,5 @@ sealed class RestResponse<T : Any> {
             status: HttpStatus = HttpStatus.BAD_REQUEST
         ): RestResponseEntity<T> =
             Error<T>(message).toResponseEntity(status)
-    }
-}
-
-class OpResponse<T : Any> private constructor(
-    val success: Boolean,
-    val message: String,
-    val data: T? = null
-) {
-    companion object {
-        fun <T : Any> success(message: String = "", data: T? = null): OpResponse<T> =
-            OpResponse(success = true, message = message, data = data)
-
-        fun <T : Any> failure(message: String): OpResponse<T> =
-            OpResponse(success = false, message = message)
     }
 }

@@ -8,6 +8,9 @@ enum class DecisionStatus {
     PENDING
 }
 
+/**
+ * Decision record (kept minimal). In this menu only DRC acts — the service doesn't attempt to model acad/research actor flows.
+ */
 data class Decision(
     val date: String,
     val nameOfDecider: String,
@@ -15,4 +18,3 @@ data class Decision(
     val status: DecisionStatus,
     val remark: String
 )
-

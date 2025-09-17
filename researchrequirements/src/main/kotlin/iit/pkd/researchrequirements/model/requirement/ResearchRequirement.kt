@@ -5,7 +5,8 @@ import iit.pkd.researchrequirements.model.auxmodel.Remark
 import iit.pkd.researchrequirements.model.auxmodel.SeatMatrix
 import iit.pkd.researchrequirements.model.auxmodel.SubAreaVacancy
 import iit.pkd.researchrequirements.model.id.ResearchRequirementID
-import iit.pkd.researchrequirements.model.session.SessionID
+import iit.pkd.researchrequirements.model.id.SessionID
+
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.mapping.Document
