@@ -2,13 +2,13 @@ package iit.pkd.researchrequirements.model.auxmodel
 
 import iit.pkd.researchrequirements.model.id.UserID
 
-data class ResearchFieldVacancy(
+data class ResearchField(
     val researchField: String,
     val vacancy: UInt,
     val possibleGuide: MutableList<UserID> = mutableListOf()
 )
 
-data class SubAreaVacancy(
+data class SubArea(
     val subArea: String,
-    val vacancies: MutableList<ResearchFieldVacancy> = mutableListOf()
+    val researchFields:MutableList<ResearchField> = mutableListOf()
 )

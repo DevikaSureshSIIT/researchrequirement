@@ -20,7 +20,7 @@ class ResearchRequirementController(
 
     /** Fetch research requirements for the latest OPEN session for the given department (body is plain text e.g. "CSE") */
     @PostMapping("/researchrequirements")
-    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<List<ResearchRequirement>> {
+    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement>{
         val dept = deptShortCode.trim()
         return service.fetchCurrentResearchRequirements(dept)
     }

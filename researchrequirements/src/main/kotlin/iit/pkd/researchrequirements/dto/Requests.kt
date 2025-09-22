@@ -1,7 +1,8 @@
 package iit.pkd.researchrequirements.dto
 
 import iit.pkd.researchrequirements.model.auxmodel.Remark
-import iit.pkd.researchrequirements.model.auxmodel.SubAreaVacancy
+import iit.pkd.researchrequirements.model.auxmodel.SubArea
+
 import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 
 
@@ -19,7 +20,7 @@ import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 data class ResearchRequirementREq(
     val requirementId: ResearchRequirementID,
     val deptShortCode: String,
-    val researchVacancy: MutableList<SubAreaVacancy> = mutableListOf(),
+    val researchVacancy: MutableList<SubArea> = mutableListOf(),
     val remarks: MutableList<Remark> = mutableListOf(),
-    val version: String? = null
+    //val version: String? = null
 )

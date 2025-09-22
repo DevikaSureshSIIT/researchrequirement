@@ -18,6 +18,8 @@ interface ResearchRequirementRepository : MongoRepository<ResearchRequirement, R
     fun findBySessionIDAndDeptShortCode(sessionID: SessionID, deptShortCode: String): List<ResearchRequirement>
     fun findAllByDeptShortCodeAndIsArchivedTrue(deptShortCode: String): List<ResearchRequirement>
     fun findAllBySessionIDAndDeptShortCode(sessionID: SessionID, deptShortCode: String): List<ResearchRequirement>
+    fun findAllByDeptShortCodeAndSessionIDIn(deptShortCode: String, sessionIDs: List<SessionID>): List<ResearchRequirement>
+
 }
 
 @Repository
@@ -26,6 +28,7 @@ interface ResearchRecruitmentSessionRepository : MongoRepository<ResearchRecruit
      * If multiple OPEN sessions exist, the latest one by endDate will be returned.
      */
     fun findTopByStatusOrderByEndDateDesc(status: SessionStatus): ResearchRecruitmentSession?
+    fun findAllByStatus(status: SessionStatus): List<ResearchRecruitmentSession>
 }
 
 @Repository
