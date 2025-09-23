@@ -41,15 +41,14 @@ class ResearchRequirementController(
 
     /** Save research requirement (upsert as draft). Body is ResearchRequirementREq (JSON). */
     @PostMapping("/researchrequirement/save")
-    fun saveRequirement(@RequestBody body: ResearchRequirementREq): ResponseEntity<OpResponse<ResearchRequirement>> {
-        val op = service.saveResearchRequirement(body)
-        return ResponseEntity.ok(op)
+    fun saveRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
+        return service.saveResearchRequirement(body)
     }
 
     /** Submit research requirement (upsert with validation). Body is ResearchRequirementREq (JSON). */
     @PostMapping("/researchrequirement/submit")
-    fun submitRequirement(@RequestBody body: ResearchRequirementREq): ResponseEntity<OpResponse<ResearchRequirement>> {
-        val op = service.submitResearchRequirement(body)
-        return ResponseEntity.ok(op)
+    fun submitRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
+        return service.submitResearchRequirement(body)
     }
+
 }

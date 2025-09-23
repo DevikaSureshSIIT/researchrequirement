@@ -1,6 +1,5 @@
 package iit.pkd.researchrequirements.service
 
-import iit.pkd.researchrequirements.api.OpResponse
 import iit.pkd.researchrequirements.api.RestResponse
 import iit.pkd.researchrequirements.api.RestResponseEntity
 import iit.pkd.researchrequirements.dto.ResearchRequirementREq
@@ -13,7 +12,6 @@ import iit.pkd.researchrequirements.repo.*
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import iit.pkd.researchrequirements.model.common.UIDate
-
 
 @Service
 class ResearchRequirementService(
@@ -44,17 +42,14 @@ class ResearchRequirementService(
 
     /** Fetch historical (archived/closed) research requirements for a dept */
     fun fetchHistoricalResearchRequirements(deptShortCode: String): RestResponseEntity<List<ResearchRequirement>> {
-        // Validate department
         val dept = deptRepo.findByDeptShortCode(deptShortCode)
             ?: return RestResponse.error("Invalid department short code: $deptShortCode", HttpStatus.BAD_REQUEST)
 
-        // Fetch all CLOSED sessions
         val closedSessions = sessionRepo.findAllByStatus(SessionStatus.CLOSED)
         if (closedSessions.isEmpty()) {
             return RestResponse.error("No closed research recruitment sessions found.", HttpStatus.NOT_FOUND)
         }
 
-        // Fetch requirements for the dept in those sessions
         val closedRequirements = rrRepo.findAllByDeptShortCodeAndSessionIDIn(
             dept.deptShortCode,
             closedSessions.map { it.id }
@@ -69,7 +64,6 @@ class ResearchRequirementService(
 
         return RestResponse.withData(closedRequirements)
     }
-
 
     /** Fetch faculty members for a department */
     fun fetchFaculty(deptShortCode: String): RestResponseEntity<List<ERPMinView>> {
@@ -86,17 +80,14 @@ class ResearchRequirementService(
     }
 
     /** Save as draft */
-    fun saveResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
-//        if (body.remarks.isEmpty()) {
-//            return OpResponse.failure("Remarks cannot be empty when saving requirement")
-//        }
+    fun saveResearchRequirement(body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
         return upsertSaveOnly(body)
     }
 
     /** Submit */
-    fun submitResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
+    fun submitResearchRequirement(body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
         if (body.remarks.isEmpty()) {
-            return OpResponse.failure("Remarks cannot be empty when submitting requirement")
+            return RestResponse.error("Remarks cannot be empty when submitting requirement")
         }
         return upsert(body, VacancyStatus.SUBMITTED, RequirementStatus.SUBMITTED)
     }
@@ -106,19 +97,19 @@ class ResearchRequirementService(
         this.map { it.copy(date = UIDate.getCurrentDate()) }.toMutableList()
 
     /** Upsert logic for SAVED status only */
-    private fun upsertSaveOnly(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
+    private fun upsertSaveOnly(body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
         val dept = deptRepo.findByDeptShortCode(body.deptShortCode)
-            ?: return OpResponse.failure("Invalid department short code: ${body.deptShortCode}")
+            ?: return RestResponse.error("Invalid department short code: ${body.deptShortCode}")
 
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
-            ?: return OpResponse.failure("No active session. Modification allowed only in OPEN session.")
+            ?: return RestResponse.error("No active session. Modification allowed only in OPEN session.")
 
         val existingList = rrRepo.findAllBySessionIDAndDeptShortCode(session.id, dept.deptShortCode)
         val existingForDept = existingList.maxByOrNull { it.version.removePrefix("v").toIntOrNull() ?: 0 }
 
         return if (existingForDept != null) {
             if (existingForDept.id != body.requirementId) {
-                OpResponse.failure("Requirement ID does not belong to department ${dept.deptShortCode}")
+                RestResponse.error("Requirement ID does not belong to department ${dept.deptShortCode}")
             } else {
                 val updated = existingForDept.copy(
                     researchVacancy = body.researchVacancy.toMutableList(),
@@ -127,7 +118,7 @@ class ResearchRequirementService(
                     remarks = body.remarks.withCurrentDate()
                 )
                 val saved = rrRepo.save(updated)
-                OpResponse.success("Research requirement updated and saved successfully", saved)
+                RestResponse.withMessageAndData("Research requirement updated and saved successfully", saved)
             }
         } else {
             val toSave = ResearchRequirement(
@@ -144,7 +135,7 @@ class ResearchRequirementService(
                 isArchived = false
             )
             val saved = rrRepo.save(toSave)
-            OpResponse.success("Research requirement created and saved successfully", saved)
+            RestResponse.withMessageAndData("Research requirement created and saved successfully", saved)
         }
     }
 
@@ -153,12 +144,12 @@ class ResearchRequirementService(
         body: ResearchRequirementREq,
         vacStatus: VacancyStatus,
         reqStatus: RequirementStatus
-    ): OpResponse<ResearchRequirement> {
+    ): RestResponseEntity<ResearchRequirement> {
         val dept = deptRepo.findByDeptShortCode(body.deptShortCode)
-            ?: return OpResponse.failure("Invalid department short code: ${body.deptShortCode}")
+            ?: return RestResponse.error("Invalid department short code: ${body.deptShortCode}")
 
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
-            ?: return OpResponse.failure("No active session. Modification allowed only in OPEN session.")
+            ?: return RestResponse.error("No active session. Modification allowed only in OPEN session.")
 
         val facultyOfDept = userRepo.findByUserType(UserType.FACULTY)
             .filter { it.deptShortCodes.contains(body.deptShortCode) }
@@ -168,7 +159,7 @@ class ResearchRequirementService(
             val updatedVacancies = subArea.researchFields.map { field ->
                 val validGuides = field.possibleGuide.filter { it in facultyOfDept }
                 if (validGuides.size != field.possibleGuide.size) {
-                    return OpResponse.failure("One or more possible guides are invalid for ${field.researchField}")
+                    return RestResponse.error("One or more possible guides are invalid for ${field.researchField}")
                 }
                 field.copy(possibleGuide = validGuides.toMutableList())
             }.toMutableList()
@@ -194,7 +185,7 @@ class ResearchRequirementService(
             )
         } else {
             if (existingForDept.id != body.requirementId) {
-                return OpResponse.failure("Requirement ID does not belong to department ${dept.deptShortCode}")
+                return RestResponse.error("Requirement ID does not belong to department ${dept.deptShortCode}")
             }
 
             if (reqStatus == RequirementStatus.SUBMITTED &&
@@ -204,7 +195,7 @@ class ResearchRequirementService(
                 val totalRequested = validatedVacancy.sumOf { sub -> sub.researchFields.sumOf { it.vacancy.toInt() } }
                 val totalApproved = existingForDept.approvedVacancy.sumOf { it.vacancy.toInt() }
                 if (totalRequested > totalApproved) {
-                    return OpResponse.failure(
+                    return RestResponse.error(
                         "Total requested vacancies ($totalRequested) exceed approved total ($totalApproved)"
                     )
                 }
@@ -221,7 +212,7 @@ class ResearchRequirementService(
         val saved = rrRepo.save(toSave)
         val msg =
             if (existingForDept == null) "Research requirement created successfully" else "Research requirement updated successfully"
-        return OpResponse.success(msg, saved)
+        return RestResponse.withMessageAndData(msg, saved)
     }
 
     /** Ensure vacancyStatus only moves forward */
