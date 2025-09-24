@@ -19,6 +19,11 @@ interface ResearchRequirementRepository : MongoRepository<ResearchRequirement, R
     fun findAllByDeptShortCodeAndIsArchivedTrue(deptShortCode: String): List<ResearchRequirement>
     fun findAllBySessionIDAndDeptShortCode(sessionID: SessionID, deptShortCode: String): List<ResearchRequirement>
     fun findAllByDeptShortCodeAndSessionIDIn(deptShortCode: String, sessionIDs: List<SessionID>): List<ResearchRequirement>
+    fun findAllBySessionIDAndDeptShortCodeAndIsArchivedFalse(
+        sessionID: SessionID,
+        deptShortCode: String
+    ): List<ResearchRequirement>
+
 
 }
 
@@ -34,7 +39,12 @@ interface ResearchRecruitmentSessionRepository : MongoRepository<ResearchRecruit
 @Repository
 interface ERPUserViewRepository : MongoRepository<ERPUserView, UserID> {
     fun findByUserType(userType: UserType): List<ERPUserView>
+    fun findByUserTypeAndDeptShortCodesContaining(
+        userType: UserType,
+        deptShortCode: String
+    ): List<ERPUserView>
 }
+
 
 @Repository
 interface DepartmentRepository : MongoRepository<Department, DeptID> {

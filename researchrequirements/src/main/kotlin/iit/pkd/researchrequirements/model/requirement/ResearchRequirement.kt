@@ -24,6 +24,6 @@ data class ResearchRequirement(
     val requirementStatus: RequirementStatus,
     val remarks: MutableList<Remark> = mutableListOf(),
     val decisions: MutableList<Decision> = mutableListOf(),
-    val version: String,
+    val version: UInt,
     val isArchived: Boolean = false
 )

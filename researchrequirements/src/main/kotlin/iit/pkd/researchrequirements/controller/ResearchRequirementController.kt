@@ -1,54 +1,68 @@
 package iit.pkd.researchrequirements.controller
 
-import iit.pkd.researchrequirements.api.OpResponse
+import iit.pkd.researchrequirements.api.RestResponse
 import iit.pkd.researchrequirements.api.RestResponseEntity
+import iit.pkd.researchrequirements.api.OpResponse
 import iit.pkd.researchrequirements.dto.ResearchRequirementREq
 import iit.pkd.researchrequirements.model.requirement.ResearchRequirement
 import iit.pkd.researchrequirements.model.user.ERPMinView
 import iit.pkd.researchrequirements.service.ResearchRequirementService
-import org.springframework.http.ResponseEntity
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
-/**
- * NOTE: first three endpoints accept plain text body (e.g. "CSE") as per your requirement.
- */
 @RestController
 @RequestMapping("/api/MENUPATH")
 class ResearchRequirementController(
     private val service: ResearchRequirementService
 ) {
 
-    /** Fetch research requirements for the latest OPEN session for the given department (body is plain text e.g. "CSE") */
     @PostMapping("/researchrequirements")
-    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement>{
-        val dept = deptShortCode.trim()
-        return service.fetchCurrentResearchRequirements(dept)
+    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement> {
+        val op = service.fetchCurrentResearchRequirements(deptShortCode.trim())
+        return if (op.success) {
+            RestResponse.withMessageAndData(op.message, op.data!!)
+        } else {
+            RestResponse.error(op.message) // your RestResponse already handles HttpStatus
+        }
     }
 
-    /** Fetch research requirement history for CLOSED/archived sessions (body is plain text e.g. "CSE") */
     @PostMapping("/researchrequirements/history")
     fun getHistoricalResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<List<ResearchRequirement>> {
-        val dept = deptShortCode.trim()
-        return service.fetchHistoricalResearchRequirements(dept)
+        val op = service.fetchHistoricalResearchRequirements(deptShortCode.trim())
+        return if (op.success) {
+            RestResponse.withMessageAndData(op.message, op.data!!)
+        } else {
+            RestResponse.error(op.message)
+        }
     }
 
-    /** Fetch faculty for given department (body is plain text e.g. "CSE") */
     @PostMapping("/faculty")
     fun getFaculty(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> {
-        val dept = deptShortCode.trim()
-        return service.fetchFaculty(dept)
+        val op = service.fetchFaculty(deptShortCode.trim())
+        return if (op.success) {
+            RestResponse.withMessageAndData(op.message, op.data!!)
+        } else {
+            RestResponse.error(op.message)
+        }
     }
 
-    /** Save research requirement (upsert as draft). Body is ResearchRequirementREq (JSON). */
     @PostMapping("/researchrequirement/save")
     fun saveRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
-        return service.saveResearchRequirement(body)
+        val op = service.saveResearchRequirement(body)
+        return if (op.success) {
+            RestResponse.withMessageAndData(op.message, op.data!!)
+        } else {
+            RestResponse.error(op.message)
+        }
     }
 
-    /** Submit research requirement (upsert with validation). Body is ResearchRequirementREq (JSON). */
     @PostMapping("/researchrequirement/submit")
     fun submitRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
-        return service.submitResearchRequirement(body)
+        val op = service.submitResearchRequirement(body)
+        return if (op.success) {
+            RestResponse.withMessageAndData(op.message, op.data!!)
+        } else {
+            RestResponse.error(op.message)
+        }
     }
-
 }
