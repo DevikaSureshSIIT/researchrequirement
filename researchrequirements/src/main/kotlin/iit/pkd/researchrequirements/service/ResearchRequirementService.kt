@@ -19,10 +19,9 @@ class ResearchRequirementService(
     private val deptRepo: DepartmentRepository
 ) {
 
-    /** Fetch current (OPEN latest) session research requirement for a dept
-     *  Service returns OpResponse; controller wraps to RestResponseEntity.
-     */
-    fun fetchCurrentResearchRequirements(deptShortCode: String): OpResponse<ResearchRequirement> {
+    /** Fetch current (OPEN latest) session research requirement for a dept*/
+    fun fetchCurrentResearchRequirements(deptShortCode: String): OpResponse<ResearchRequirement>
+    {
         val dept = deptRepo.findByDeptShortCode(deptShortCode)
             ?: return OpResponse.failure("Invalid department short code: $deptShortCode")
 
@@ -41,8 +40,13 @@ class ResearchRequirementService(
         return OpResponse.success(data = latestRequirement)
     }
 
+
+
+
+
     /** Fetch historical (CLOSED sessions) research requirements for a dept */
-    fun fetchHistoricalResearchRequirements(deptShortCode: String): OpResponse<List<ResearchRequirement>> {
+    fun fetchHistoricalResearchRequirements(deptShortCode: String): OpResponse<List<ResearchRequirement>>
+    {
         val dept = deptRepo.findByDeptShortCode(deptShortCode)
             ?: return OpResponse.failure("Invalid department short code: $deptShortCode")
 
@@ -57,12 +61,14 @@ class ResearchRequirementService(
         if (closedRequirements.isEmpty()) {
             return OpResponse.failure("No historical research requirements found for department ${dept.deptShortCode}.")
         }
-
         return OpResponse.success(data = closedRequirements)
     }
 
+
+
     /** Fetch faculty members for a department — querying at data-layer */
-    fun fetchFaculty(deptShortCode: String): OpResponse<List<ERPMinView>> {
+    fun fetchFaculty(deptShortCode: String): OpResponse<List<ERPMinView>>
+    {
         if (deptShortCode != "*") {
             deptRepo.findByDeptShortCode(deptShortCode)
                 ?: return OpResponse.failure("Invalid department short code: $deptShortCode")
@@ -79,21 +85,31 @@ class ResearchRequirementService(
         return OpResponse.success(data = minViews)
     }
 
+
+
+
     /** Save as draft
      *  Enforce exactly one remark per update (if provided). If remarks empty allowed for save,
      *  but we will ensure only 0 or 1 remark is present (0 allowed for save if you prefer).
      */
-    fun saveResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
+    fun saveResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement>
+    {
         // allow saving even without remarks, but if remarks provided enforce size == 1
-        if (body.remarks.isNotEmpty() && body.remarks.size != 1) {
+        if (body.remarks.isNotEmpty() && body.remarks.size != 1)
+        {
             return OpResponse.failure("Exactly one remark must be provided per update")
         }
         return upsertSaveOnly(body)
     }
 
+
+
+
     /** Submit (requires exactly one remark) */
-    fun submitResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement> {
-        if (body.remarks.isEmpty() || body.remarks.size != 1) {
+    fun submitResearchRequirement(body: ResearchRequirementREq): OpResponse<ResearchRequirement>
+    {
+        if (body.remarks.isEmpty() || body.remarks.size != 1)
+        {
             return OpResponse.failure("Exactly one remark must be provided when submitting requirement")
         }
         return upsert(body, VacancyStatus.SUBMITTED, RequirementStatus.SUBMITTED)
@@ -103,6 +119,9 @@ class ResearchRequirementService(
     private fun List<Remark>.withCurrentDateSingle(): MutableList<Remark> =
         if (this.isEmpty()) mutableListOf()
         else mutableListOf(this.first().copy(date = UIDate.getCurrentDate()))
+
+
+
 
     /**
      * Upsert logic for SAVED status only.
@@ -116,27 +135,26 @@ class ResearchRequirementService(
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
             ?: return OpResponse.failure("No active session. Modification allowed only in OPEN session.")
 
-        // If requirementId provided and exists -> update that record (create new version)
+        // If requirementId is provided -> update that specific document
         val existingOpt = if (body.requirementId != ResearchRequirementID.empty()) {
             rrRepo.findById(body.requirementId).orElse(null)
         } else null
 
         if (existingOpt != null) {
-            // verify ownership (dept + session)
+            // Verify ownership
             if (existingOpt.deptShortCode != dept.deptShortCode || existingOpt.sessionID != session.id) {
                 return OpResponse.failure("Requirement ID does not belong to department ${dept.deptShortCode} in current OPEN session")
             }
 
-            // create new version: archive old, create new doc with incremented version
+            // Archive old version
             val old = existingOpt.copy(isArchived = true)
-            rrRepo.save(old) // archive old
+            rrRepo.save(old)
 
-            val newReq = ResearchRequirement(
+            // Create new version
+            val newReq = existingOpt.copy(
                 id = ResearchRequirementID.create(),
-                sessionID = session.id,
-                deptShortCode = dept.deptShortCode,
                 researchVacancy = body.researchVacancy.toMutableList(),
-                approvedVacancy = old.approvedVacancy.toMutableList(), // keep approvedVacancy (unchanged)
+                approvedVacancy = old.approvedVacancy.toMutableList(),
                 vacancyStatus = forwardOnlyStatusUpdate(old.vacancyStatus, VacancyStatus.SAVED),
                 requirementStatus = RequirementStatus.SAVED,
                 remarks = body.remarks.withCurrentDateSingle(),
@@ -148,31 +166,11 @@ class ResearchRequirementService(
             return OpResponse.success("Research requirement updated and saved successfully", saved)
         }
 
-        // No existing -> ensure no active requirement for this dept+session (uniqueness)
+        // If requirementId is empty -> create fresh requirement
+        // Ensure only one active per dept/session
         val activeList = rrRepo.findAllBySessionIDAndDeptShortCodeAndIsArchivedFalse(session.id, dept.deptShortCode)
-        if (activeList.isNotEmpty()) {
-            // If active exists, we create a new version and archive existing active(s)
-            val prev = activeList.maxByOrNull { it.version }!!
-            val archivedPrev = prev.copy(isArchived = true)
-            rrRepo.save(archivedPrev)
-            val newReq = ResearchRequirement(
-                id = ResearchRequirementID.create(),
-                sessionID = session.id,
-                deptShortCode = dept.deptShortCode,
-                researchVacancy = body.researchVacancy.toMutableList(),
-                approvedVacancy = mutableListOf(),
-                vacancyStatus = VacancyStatus.SAVED,
-                requirementStatus = RequirementStatus.SAVED,
-                remarks = body.remarks.withCurrentDateSingle(),
-                decisions = mutableListOf(),
-                version = prev.version + 1u,
-                isArchived = false
-            )
-            val saved = rrRepo.save(newReq)
-            return OpResponse.success("Research requirement created and saved successfully (new version)", saved)
-        }
+        activeList.forEach { rrRepo.save(it.copy(isArchived = true)) }
 
-        // Fresh create (no existing active)
         val toSave = ResearchRequirement(
             id = ResearchRequirementID.create(),
             sessionID = session.id,
@@ -190,6 +188,11 @@ class ResearchRequirementService(
         return OpResponse.success("Research requirement created and saved successfully", saved)
     }
 
+
+
+
+
+
     /**
      * Upsert logic for SUBMITTED status. Similar versioning/archiving logic as save.
      * Validates possible guides belong to department. Keeps approvedVacancy immutable here.
@@ -205,11 +208,10 @@ class ResearchRequirementService(
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
             ?: return OpResponse.failure("No active session. Modification allowed only in OPEN session.")
 
-        // Validate possible guides at data layer using repo method that filters by dept
+        // Validate possible guides
         val facultyOfDept = userRepo.findByUserTypeAndDeptShortCodesContaining(UserType.FACULTY, body.deptShortCode)
             .map { it.id }
 
-        // validate and build validatedVacancy
         val validatedVacancy = body.researchVacancy.map { subArea ->
             val updatedVacancies = subArea.researchFields.map { field ->
                 val validGuides = field.possibleGuide.filter { it in facultyOfDept }
@@ -221,18 +223,17 @@ class ResearchRequirementService(
             subArea.copy(researchFields = updatedVacancies)
         }.toMutableList()
 
-        // If requirementId provided and exists -> update that record (create new version)
+        // If requirementId is provided -> update specific document
         val existingOpt = if (body.requirementId != ResearchRequirementID.empty()) {
             rrRepo.findById(body.requirementId).orElse(null)
         } else null
 
         if (existingOpt != null) {
-            // Verify ownership
             if (existingOpt.deptShortCode != dept.deptShortCode || existingOpt.sessionID != session.id) {
                 return OpResponse.failure("Requirement ID does not belong to department ${dept.deptShortCode} in current OPEN session")
             }
 
-            // If existing was APPROVED and has approvedVacancy -> cannot request more than approved
+            // Check approvedVacancy limit if submitting
             if (reqStatus == RequirementStatus.SUBMITTED &&
                 existingOpt.vacancyStatus == VacancyStatus.APPROVED &&
                 existingOpt.approvedVacancy.isNotEmpty()
@@ -240,71 +241,36 @@ class ResearchRequirementService(
                 val totalRequested = validatedVacancy.sumOf { sub -> sub.researchFields.sumOf { it.vacancy.toInt() } }
                 val totalApproved = existingOpt.approvedVacancy.sumOf { it.vacancy.toInt() }
                 if (totalRequested > totalApproved) {
-                    return OpResponse.failure(
-                        "Total requested vacancies ($totalRequested) exceed approved total ($totalApproved)"
-                    )
+                    return OpResponse.failure("Total requested vacancies ($totalRequested) exceed approved total ($totalApproved)")
                 }
             }
 
-            // Archive old and create new version
+            // Archive old version
             val old = existingOpt.copy(isArchived = true)
             rrRepo.save(old)
 
+            // Save new version
             val newReq = existingOpt.copy(
                 id = ResearchRequirementID.create(),
                 researchVacancy = validatedVacancy,
                 vacancyStatus = forwardOnlyStatusUpdate(existingOpt.vacancyStatus, vacStatus),
                 requirementStatus = reqStatus,
                 remarks = body.remarks.withCurrentDateSingle(),
-                version = existingOpt.version + 1u,
+                version = old.version + 1u,
                 isArchived = false
             )
             val saved = rrRepo.save(newReq)
             return OpResponse.success("Research requirement updated successfully", saved)
         }
 
-        // No existing by id -> look for active by session+dept and archive it (ensure uniqueness)
+        // If requirementId is empty -> create new requirement
         val activeList = rrRepo.findAllBySessionIDAndDeptShortCodeAndIsArchivedFalse(session.id, dept.deptShortCode)
-        if (activeList.isNotEmpty()) {
-            val prev = activeList.maxByOrNull { it.version }!!
-            if (reqStatus == RequirementStatus.SUBMITTED &&
-                prev.vacancyStatus == VacancyStatus.APPROVED &&
-                prev.approvedVacancy.isNotEmpty()
-            ) {
-                val totalRequested = validatedVacancy.sumOf { sub -> sub.researchFields.sumOf { it.vacancy.toInt() } }
-                val totalApproved = prev.approvedVacancy.sumOf { it.vacancy.toInt() }
-                if (totalRequested > totalApproved) {
-                    return OpResponse.failure(
-                        "Total requested vacancies ($totalRequested) exceed approved total ($totalApproved)"
-                    )
-                }
-            }
+        activeList.forEach { rrRepo.save(it.copy(isArchived = true)) }
 
-            // archive prev
-            rrRepo.save(prev.copy(isArchived = true))
-
-            val newDoc = ResearchRequirement(
-                id = ResearchRequirementID.create(),
-                sessionID = session.id,
-                deptShortCode = dept.deptShortCode,
-                researchVacancy = validatedVacancy,
-                approvedVacancy = prev.approvedVacancy.toMutableList(),
-                vacancyStatus = vacStatus,
-                requirementStatus = reqStatus,
-                remarks = body.remarks.withCurrentDateSingle(),
-                decisions = prev.decisions.toMutableList(),
-                version = prev.version + 1u,
-                isArchived = false
-            )
-            val saved = rrRepo.save(newDoc)
-            return OpResponse.success("Research requirement created/updated successfully", saved)
-        }
-
-        // Fresh create when none exist
         val toSave = ResearchRequirement(
             id = ResearchRequirementID.create(),
             sessionID = session.id,
-            deptShortCode = body.deptShortCode,
+            deptShortCode = dept.deptShortCode,
             researchVacancy = validatedVacancy,
             approvedVacancy = mutableListOf(),
             vacancyStatus = vacStatus,
@@ -317,7 +283,6 @@ class ResearchRequirementService(
         val saved = rrRepo.save(toSave)
         return OpResponse.success("Research requirement created successfully", saved)
     }
-
     /** Ensure vacancyStatus only moves forward */
     private fun forwardOnlyStatusUpdate(current: VacancyStatus, requested: VacancyStatus): VacancyStatus {
         return when (current) {
