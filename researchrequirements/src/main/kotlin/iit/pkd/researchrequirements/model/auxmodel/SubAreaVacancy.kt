@@ -5,10 +5,10 @@ import iit.pkd.researchrequirements.model.id.UserID
 data class ResearchField(
     val researchField: String,
     val vacancy: UInt,
-    val possibleGuide: MutableList<UserID> = mutableListOf()
+    val possibleGuide: List<UserID>
 )
 
 data class SubArea(
     val subArea: String,
-    val researchFields:MutableList<ResearchField> = mutableListOf()
+    val researchFields:List<ResearchField>
 )

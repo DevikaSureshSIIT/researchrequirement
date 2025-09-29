@@ -43,8 +43,4 @@ data class ERPMinView(
     val email: String,
     val deptShortCodes: List<String>,
     val erpID: ERPID,
-
-
-
-
-)
+    )

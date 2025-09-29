@@ -13,11 +13,14 @@ import org.springframework.data.mongodb.core.mapping.Document
 
 enum class SessionStatus { OPEN,  CLOSED }
 
-@Document("researchRecruitmentSessions")
-data class ResearchRecruitmentSession(
+@Document(value = "researchRecruitmentSessions")
+data class ResearchRecruitmentSession (
     @Id val id: SessionID,
     @Indexed(unique = true) val name: String,
-    val status: SessionStatus,
     val description: String,
-    val endDate: UIDate
+    val status: SessionStatus,
+    val startDate: UIDate,
+    val endDate: UIDate,
+    val isArchived: Boolean = false
 )
+

@@ -1,68 +1,67 @@
 package iit.pkd.researchrequirements.controller
 
+import iit.pkd.researchrequirements.api.MonoRestResponseEntity
 import iit.pkd.researchrequirements.api.RestResponse
-import iit.pkd.researchrequirements.api.RestResponseEntity
+
 import iit.pkd.researchrequirements.api.OpResponse
 import iit.pkd.researchrequirements.dto.ResearchRequirementREq
+import iit.pkd.researchrequirements.model.id.ResearchRequirementID
 import iit.pkd.researchrequirements.model.requirement.ResearchRequirement
 import iit.pkd.researchrequirements.model.user.ERPMinView
+import iit.pkd.researchrequirements.service.FacultyService
 import iit.pkd.researchrequirements.service.ResearchRequirementService
-import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import reactor.core.publisher.Mono
 
 @RestController
 @RequestMapping("/api/MENUPATH")
 class ResearchRequirementController(
-    private val service: ResearchRequirementService
+    private val service: ResearchRequirementService,
+    private val facultyService: FacultyService
 ) {
 
     @PostMapping("/researchrequirements")
-    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<ResearchRequirement> {
-        val op = service.fetchCurrentResearchRequirements(deptShortCode.trim())
-        return if (op.success) {
-            RestResponse.withMessageAndData(op.message, op.data!!)
-        } else {
-            RestResponse.error(op.message) // your RestResponse already handles HttpStatus
-        }
+    fun getCurrentResearchRequirements(@RequestBody deptShortCode: String): Mono<MonoRestResponseEntity<ResearchRequirement>> {
+        return service.fetchCurrentResearchRequirements(deptShortCode.trim())
+            .map { op ->
+                if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
+                else RestResponse.error(op.message)
+            }
     }
 
     @PostMapping("/researchrequirements/history")
-    fun getHistoricalResearchRequirements(@RequestBody deptShortCode: String): RestResponseEntity<List<ResearchRequirement>> {
-        val op = service.fetchHistoricalResearchRequirements(deptShortCode.trim())
-        return if (op.success) {
-            RestResponse.withMessageAndData(op.message, op.data!!)
-        } else {
-            RestResponse.error(op.message)
-        }
+    fun getHistoricalResearchRequirements(@RequestBody deptShortCode: String): Mono<MonoRestResponseEntity<List<ResearchRequirement>>> {
+        return service.fetchHistoricalResearchRequirements(deptShortCode.trim())
+            .map { op ->
+                if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
+                else RestResponse.error(op.message)
+            }
     }
 
     @PostMapping("/faculty")
-    fun getFaculty(@RequestBody deptShortCode: String): RestResponseEntity<List<ERPMinView>> {
-        val op = service.fetchFaculty(deptShortCode.trim())
-        return if (op.success) {
-            RestResponse.withMessageAndData(op.message, op.data!!)
-        } else {
-            RestResponse.error(op.message)
-        }
+    fun getFaculty(@RequestBody deptShortCode: String): Mono<MonoRestResponseEntity<List<ERPMinView>>> {
+        return facultyService.fetchFaculty(deptShortCode.trim())
+            .map { op ->
+                if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
+                else RestResponse.error(op.message)
+            }
     }
 
     @PostMapping("/researchrequirement/save")
-    fun saveRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
-        val op = service.saveResearchRequirement(body)
-        return if (op.success) {
-            RestResponse.withMessageAndData(op.message, op.data!!)
-        } else {
-            RestResponse.error(op.message)
-        }
+    fun saveRequirement(@RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
+        return service.saveResearchRequirement(body)
+            .map { op ->
+                if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
+                else RestResponse.error(op.message)
+            }
     }
 
     @PostMapping("/researchrequirement/submit")
-    fun submitRequirement(@RequestBody body: ResearchRequirementREq): RestResponseEntity<ResearchRequirement> {
-        val op = service.submitResearchRequirement(body)
-        return if (op.success) {
-            RestResponse.withMessageAndData(op.message, op.data!!)
-        } else {
-            RestResponse.error(op.message)
-        }
+    fun submitRequirement(@RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
+        return service.submitResearchRequirement(body)
+            .map { op ->
+                if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
+                else RestResponse.error(op.message)
+            }
     }
 }

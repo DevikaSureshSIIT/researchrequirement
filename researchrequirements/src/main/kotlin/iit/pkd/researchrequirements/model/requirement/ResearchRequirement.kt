@@ -18,12 +18,12 @@ data class ResearchRequirement(
     @Id val id: ResearchRequirementID,
     @Indexed val sessionID: SessionID,
     @Indexed val deptShortCode: String,
-    val researchVacancy: MutableList<SubArea> = mutableListOf(),
-    val approvedVacancy: MutableList<ApprovedSeatMatrix> = mutableListOf(),
+    val researchVacancy: List<SubArea> ,
+    val approvedVacancy: List<ApprovedSeatMatrix> ,
     val vacancyStatus: VacancyStatus,
     val requirementStatus: RequirementStatus,
-    val remarks: MutableList<Remark> = mutableListOf(),
-    val decisions: MutableList<Decision> = mutableListOf(),
-    val version: UInt,
+    val remarks: List<Remark>,
+    val decisions: List<Decision>,
+
     val isArchived: Boolean = false
 )
