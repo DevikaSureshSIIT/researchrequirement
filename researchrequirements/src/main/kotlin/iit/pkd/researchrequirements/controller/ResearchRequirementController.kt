@@ -48,7 +48,7 @@ class ResearchRequirementController(
     }
 
     @PostMapping("/researchrequirement/save")
-    fun saveRequirement(@RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
+    fun saveRequirement(@Valid @RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
         return service.saveResearchRequirement(body)
             .map { op ->
                 if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
@@ -57,7 +57,7 @@ class ResearchRequirementController(
     }
 
     @PostMapping("/researchrequirement/submit")
-    fun submitRequirement(@RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
+    fun submitRequirement(@Valid @RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
         return service.submitResearchRequirement(body)
             .map { op ->
                 if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
