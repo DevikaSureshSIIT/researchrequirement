@@ -59,7 +59,7 @@ class ResearchRequirementService(
     private fun List<Remark>.withCurrentDateSingle(): List<Remark> =
         if (this.isEmpty()) emptyList() else listOf(this.first().copy(date = UIDate.getCurrentDate()))
 
-    fun saveResearchRequirement(body: ResearchRequirementREq): Mono<OpResponse<ResearchRequirementID>> {
+    fun saveResearchRequirement(body: ResearchRequirement): Mono<OpResponse<ResearchRequirementID>> {
         if (body.remarks.isNotEmpty() && body.remarks.size != 1)
             return OpResponse.failureAsMono("Exactly one remark must be provided per update")
 
@@ -69,8 +69,8 @@ class ResearchRequirementService(
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
             ?: return OpResponse.failureAsMono("No active session. Modification allowed only in OPEN session.")
 
-        val existingOpt = if (body.requirementId != ResearchRequirementID.empty())
-            rrRepo.findById(body.requirementId).orElse(null) else null
+        val existingOpt = if (body.id != ResearchRequirementID.empty())
+            rrRepo.findById(body.id).orElse(null) else null
 
         if (existingOpt?.isArchived == true)
             return OpResponse.failureAsMono("Modification not allowed on archived requirement")
@@ -107,7 +107,7 @@ class ResearchRequirementService(
             .flatMap { saved -> OpResponse.successAsMono("Requirement saved successfully", saved.id) }
     }
 
-    fun submitResearchRequirement(body: ResearchRequirementREq): Mono<OpResponse<ResearchRequirementID>> {
+    fun submitResearchRequirement(body: ResearchRequirement): Mono<OpResponse<Nothing>> {
         if (body.remarks.isEmpty() || body.remarks.size != 1)
             return OpResponse.failureAsMono("Exactly one remark must be provided when submitting requirement")
 
@@ -115,7 +115,7 @@ class ResearchRequirementService(
             ?: return OpResponse.failureAsMono("Invalid department short code: ${body.deptShortCode}")
 
         val session = sessionRepo.findTopByStatusOrderByEndDateDesc(SessionStatus.OPEN)
-            ?: return OpResponse.failureAsMono("No active session. Modification allowed only in OPEN session.")
+            ?: return OpResponse.failureAsMono("No active research recruitment session found.")
 
         val facultyOfDept = userRepo.findByUserTypeAndDeptShortCodesContaining(UserType.FACULTY, body.deptShortCode)
             .map { it.id }
@@ -124,16 +124,16 @@ class ResearchRequirementService(
             val updatedVacancies = subArea.researchFields.map { field ->
                 val validGuides = field.possibleGuide.filter { it in facultyOfDept }
                 if (validGuides.size != field.possibleGuide.size)
-                    return OpResponse.failureAsMono<ResearchRequirementID>(
+                    return OpResponse.failureAsMono<Nothing>(
                         "One or more possible guides are invalid for ${field.researchField}"
                     )
-                field.copy(possibleGuide = validGuides) // no toMutableList()
+                field.copy(possibleGuide = validGuides) // list, no toMutableList()
             }
             subArea.copy(researchFields = updatedVacancies)
         }
 
-        val existingOpt = if (body.requirementId != ResearchRequirementID.empty())
-            rrRepo.findById(body.requirementId).orElse(null) else null
+        val existingOpt = if (body.id!= ResearchRequirementID.empty())
+            rrRepo.findById(body.id).orElse(null) else null
 
         if (existingOpt?.isArchived == true)
             return OpResponse.failureAsMono("Modification not allowed on archived requirement")
@@ -162,7 +162,6 @@ class ResearchRequirementService(
                 vacancyStatus = forwardOnlyStatusUpdate(existingOpt.vacancyStatus, VacancyStatus.SUBMITTED),
                 requirementStatus = RequirementStatus.SUBMITTED,
                 remarks = body.remarks.withCurrentDateSingle(),
-
                 isArchived = false
             )
         } else {
@@ -176,14 +175,14 @@ class ResearchRequirementService(
                 requirementStatus = RequirementStatus.SUBMITTED,
                 remarks = body.remarks.withCurrentDateSingle(),
                 decisions = emptyList(),
-
                 isArchived = false
             )
         }
 
         return Mono.fromCallable { rrRepo.save(toSave) }
-            .flatMap { saved -> OpResponse.successAsMono("Requirement submitted successfully", saved.id) }
+            .flatMap { OpResponse.successAsMono("Research vacancies saved successfully.") } // data = null
     }
+
 
     /** Ensure vacancyStatus only moves forward */
     private fun forwardOnlyStatusUpdate(current: VacancyStatus, requested: VacancyStatus): VacancyStatus {
