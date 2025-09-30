@@ -80,7 +80,7 @@ class ResearchRequirementService(
                 return OpResponse.failureAsMono("Requirement ID does not belong to department ${dept.deptShortCode} in current OPEN session")
 
             existingOpt.copy(
-                researchVacancy = body.researchVacancy, // no toMutableList()
+                requestedVacancy = body.requestedVacancy, // no toMutableList()
                 vacancyStatus = forwardOnlyStatusUpdate(existingOpt.vacancyStatus, VacancyStatus.SAVED),
                 requirementStatus = RequirementStatus.SAVED,
                 remarks = body.remarks.withCurrentDateSingle(),
@@ -92,7 +92,7 @@ class ResearchRequirementService(
                 id = ResearchRequirementID.create(),
                 sessionID = session.id,
                 deptShortCode = dept.deptShortCode,
-                researchVacancy = body.researchVacancy, // no toMutableList()
+                requestedVacancy = body.requestedVacancy, // no toMutableList()
                 approvedVacancy = emptyList(),
                 vacancyStatus = VacancyStatus.SAVED,
                 requirementStatus = RequirementStatus.SAVED,
@@ -120,7 +120,7 @@ class ResearchRequirementService(
         val facultyOfDept = userRepo.findByUserTypeAndDeptShortCodesContaining(UserType.FACULTY, body.deptShortCode)
             .map { it.id }
 
-        val validatedVacancy = body.researchVacancy.map { subArea ->
+        val validatedVacancy = body.requestedVacancy.map { subArea ->
             val updatedVacancies = subArea.researchFields.map { field ->
                 val validGuides = field.possibleGuide.filter { it in facultyOfDept }
                 if (validGuides.size != field.possibleGuide.size)
@@ -158,7 +158,7 @@ class ResearchRequirementService(
                 return OpResponse.failureAsMono("Requirement ID does not belong to department ${dept.deptShortCode} in current OPEN session")
 
             existingOpt.copy(
-                researchVacancy = validatedVacancy,
+                requestedVacancy = validatedVacancy,
                 vacancyStatus = forwardOnlyStatusUpdate(existingOpt.vacancyStatus, VacancyStatus.SUBMITTED),
                 requirementStatus = RequirementStatus.SUBMITTED,
                 remarks = body.remarks.withCurrentDateSingle(),
@@ -169,7 +169,7 @@ class ResearchRequirementService(
                 id = ResearchRequirementID.create(),
                 sessionID = session.id,
                 deptShortCode = dept.deptShortCode,
-                researchVacancy = validatedVacancy,
+               requestedVacancy = validatedVacancy,
                 approvedVacancy = emptyList(),
                 vacancyStatus = VacancyStatus.SUBMITTED,
                 requirementStatus = RequirementStatus.SUBMITTED,
