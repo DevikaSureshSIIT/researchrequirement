@@ -48,25 +48,17 @@ class ResearchRequirementController(
             }
     }
 
-    @PostMapping("/researchrequirement/save")
-<<<<<<< HEAD
-    fun saveRequirement(@Valid @RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
-=======
+   @PostMapping("/researchrequirement/save")
     fun saveRequirement(@Valid @RequestBody body: ResearchRequirement): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
->>>>>>> a6eb6b6 (Service and Controller Update)
+
         return service.saveResearchRequirement(body)
             .map { op ->
                 if (op.success) RestResponse.withMessageAndData(op.message, op.data!!)
                 else RestResponse.error(op.message)
             }
     }
-
     @PostMapping("/researchrequirement/submit")
-<<<<<<< HEAD
-    fun submitRequirement(@Valid @RequestBody body: ResearchRequirementREq): Mono<MonoRestResponseEntity<ResearchRequirementID>> {
-=======
     fun submitRequirement(@Valid @RequestBody body: ResearchRequirement): Mono<MonoRestResponseEntity<Nothing>> {
->>>>>>> a6eb6b6 (Service and Controller Update)
         return service.submitResearchRequirement(body)
             .map { op ->
                 if (op.success) RestResponse.withMessage<Nothing>(op.message) // data will be null
