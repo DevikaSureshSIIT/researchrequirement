@@ -18,7 +18,7 @@ data class ResearchRequirement(
     @Id val id: ResearchRequirementID,
     @Indexed val sessionID: SessionID,
     @Indexed val deptShortCode: String,
-    val researchVacancy: List<SubArea> ,
+    val requestedVacancy: List<SubArea> ,
     val approvedVacancy: List<ApprovedSeatMatrix> ,
     val vacancyStatus: VacancyStatus,
     val requirementStatus: RequirementStatus,
