@@ -74,6 +74,12 @@ class ResearchRequirementService(
 
         if (existingOpt?.isArchived == true)
             return OpResponse.failureAsMono("Modification not allowed on archived requirement")
+             val activeForDept = rrRepo.findAllBySessionIDAndDeptShortCodeAndIsArchivedFalse(session.id, dept.deptShortCode)
+        if (existingOpt == null && activeForDept.isNotEmpty()) {
+            return OpResponse.failureAsMono(
+                "An active ResearchRequirement already exists for department ${dept.deptShortCode} in the current OPEN session"
+            )
+        }
 
         val toSave = if (existingOpt != null) {
             if (existingOpt.deptShortCode != dept.deptShortCode || existingOpt.sessionID != session.id)
@@ -152,6 +158,12 @@ class ResearchRequirementService(
             }
         }
         // ----------------------------------------
+        val activeForDept = rrRepo.findAllBySessionIDAndDeptShortCodeAndIsArchivedFalse(session.id, dept.deptShortCode)
+        if (existingOpt == null && activeForDept.isNotEmpty()) {
+            return OpResponse.failureAsMono(
+                "An active ResearchRequirement already exists for department ${dept.deptShortCode} in the current OPEN session"
+            )
+        }
 
         val toSave = if (existingOpt != null) {
             if (existingOpt.deptShortCode != dept.deptShortCode || existingOpt.sessionID != session.id)
