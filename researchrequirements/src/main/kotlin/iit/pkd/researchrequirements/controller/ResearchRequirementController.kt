@@ -62,7 +62,7 @@ class ResearchRequirementController(
         return service.submitResearchRequirement(body)
             .map { op ->
                 if (op.success) RestResponse.withMessage<Nothing>(op.message) // data will be null
-                else RestResponse.withMessage<Nothing>(op.message) // data null on failure as well
+                else RestResponse.error(op.message) // data null on failure as well
             }
     }
 
